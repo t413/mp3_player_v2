@@ -14,49 +14,63 @@
 #include "../drivers/sta013.h"		// STA013 Mp3 Decoder
 #include "../drivers/pcm1774.h"		// PCM 1774 DAC
 
-// TODO: 5a.  Include I2C And SPI Driver Include Files
+#include "../drivers/i2c.h"
 #include "../drivers/ssp_spi.h"
 
-void printLine()
-{
-	rprintf("------------------------------------------------------------------------------------\n");
+#include "./mp3.h"
+#include "./read_id3.h"
+
+
+/* ---- private declarations ---- */
+FRESULT scan_files (char* path);
+void getUartLine(char* uartInput);
+void dir_ls(char * dirPath, unsigned char show_hidden, unsigned char show_all);
+void open_file(char * file_path);
+
+
+
+/* ---- functions ---- */
+void sd_card_detect(void *pvParameters){
+	unsigned char last_sd = 0;
+	for(;;) {
+		if (IS_SD_CARD_HERE && !last_sd) {  //if sd card is present for first time
+			FATFS SDCard;        // Takes ~550 Bytes
+			rprintf("mounting card..");
+			FRESULT res = f_mount(0, &SDCard); // Mount the Card on the File System
+			rprintf(" done w/%s..\n", (res)? "failure":"success");
+		}
+		else if (!IS_SD_CARD_HERE && last_sd) {  //if sd card is gone for first time
+			rprintf("un-mounting card..");
+			FRESULT res = f_mount(0, NULL); // UN-mount the Card from the File System
+			rprintf(" done w/%s..\n", (res)? "failure":"success");
+		}
+		last_sd = IS_SD_CARD_HERE;
+		vTaskDelay(100);
+	}
 }
+
+
 void uartUI(void *pvParameters)
 {
 	OSHANDLES *osHandles = (OSHANDLES*)pvParameters;
 	char uartInput[128];
+	char current_dir[128] = "0:";
 
-	// Error check if SPI Lock doesn't exist.
-	if(0 == osHandles->lock.SPI)
-	{
-		rprintf("You did not create an SPI Mutex\n");
-		while(1);
-	}
 
-	// TODO: 5b. (Done) Initialize SPI
-	initialize_SSPSPI();
+	//i2c_init(400); <- moved to main();
 
-	// TODO: 5c.  Initialize I2C
-    // i2c_Initialize() ???
-
-	diskio_initializeSPIMutex(&(osHandles->lock.SPI));
-	initialize_SdCardSignals();
+	rprintf("init sta013\n");
 	initialize_sta013();
-	initialize_pcm1774();
 
-	FATFS SDCard;        // Takes ~550 Bytes
-	if(FR_OK != f_mount(0, &SDCard)) { // Mount the Card on the File System
-		rprintf("WARNING: SD CARD Could not be mounted!\n");
-	}
+	rprintf("pcm1774\n");
+	initialize_pcm1774();
 
 	for (;;)
 	{
-		rprintf("LPC: ");
-		memset(uartInput, 0, sizeof(uartInput));
-		getUartLine(uartInput);
-		if (strlen(uartInput) <= 0){
-			continue;
-		}
+		rprintf("tim: "); //print prompt
+		memset(uartInput, 0, sizeof(uartInput));  //clear buffer
+		getUartLine(uartInput);  //waits for return
+		if (strlen(uartInput) <= 0) continue; //be sure there's a command here.
 
 		char *command = strtok(uartInput, " ");
 
@@ -64,119 +78,103 @@ void uartUI(void *pvParameters)
 			char *echoBack = strtok(NULL, "");
 			rprintf("Echo: %s\n", echoBack);
 		}
-		else if(MATCH("ls", command))
-		{
-			DIR Dir;
-			FILINFO Finfo;
-			FATFS *fs;
-			FRESULT returnCode = FR_OK;
 
-			unsigned int fileBytesTotal, numFiles, numDirs;
-			fileBytesTotal = numFiles = numDirs = 0;
-			#if _USE_LFN
-			char Lfname[512];
-			#endif
+		/*---------miscellaneous opperations--------*/
+		else if(MATCH("effect", command)) {
+			char * effect_str = strtok(NULL, "");
+			unsigned char effect_int = atoi(effect_str);
+			rprintf("sending effect 0x%02X\n",effect_int);
+			if(xQueueSend(osHandles->queue.effect, &effect_int, 100))
+				rprintf(".. sent!\n");
+		}
 
-			char dirPath[] = "0:";
-			if (RES_OK != (returnCode = f_opendir(&Dir, dirPath))) {
-				rprintf("Invalid directory: |%s|\n", dirPath);
-				continue;
+		/*---------music commands--------*/
+		else if(MATCH("speed", command)) {
+			rprintf("decoding speed: %i bytes/ms\n",player_status.read_speed);
+		}
+		else if(MATCH("pp", command)) {
+			unsigned char cntl = PLAY_PAUSE;
+			if(xQueueSend(osHandles->queue.mp3_control, &cntl, 100))
+				rprintf(".. sent!\n");
+		}
+		else if(MATCH("stop", command)) {
+			unsigned int num_queued = uxQueueMessagesWaiting(osHandles->queue.play_this_MP3);
+			rprintf(" %i queued, removing each.\n",num_queued);
+			while (num_queued--) {
+				char file_name[128];
+				xQueueReceive(osHandles->queue.play_this_MP3, &file_name[0],0);
 			}
-
-			rprintf("Directory listing of: %s\n\n", dirPath);
-			for (;;) {
-				#if _USE_LFN
-				Finfo.lfname = Lfname;
-				Finfo.lfsize = sizeof(Lfname);
-				#endif
-
-				char returnCode = f_readdir(&Dir, &Finfo);
-				if ( (FR_OK != returnCode) || !Finfo.fname[0])
-					break;
-				if (Finfo.fattrib & AM_DIR){
-					numDirs++;
-				}
-				else{
-					numFiles++;
-					fileBytesTotal += Finfo.fsize;
-				}
-				iprintf("%c%c%c%c%c %u/%2u/%2u %2u:%2u %10lu %13s",
-						(Finfo.fattrib & AM_DIR) ? 'D' : '-',
-						(Finfo.fattrib & AM_RDO) ? 'R' : '-',
-						(Finfo.fattrib & AM_HID) ? 'H' : '-',
-						(Finfo.fattrib & AM_SYS) ? 'S' : '-',
-						(Finfo.fattrib & AM_ARC) ? 'A' : '-',
-						(Finfo.fdate >> 9) + 1980, (Finfo.fdate >> 5) & 15, Finfo.fdate & 31,
-						(Finfo.ftime >> 11), (Finfo.ftime >> 5) & 63, Finfo.fsize, &(Finfo.fname[0]));
-				#if _USE_LFN
-				iprintf(" -- %s", Lfname);
-				#endif
-				iprintf("\n");
+			unsigned char cntl = STOP;
+			xQueueSend(osHandles->queue.mp3_control, &cntl, 100);
+		}
+		else if (MATCH("next", command)) { unsigned char cntl = STOP; xQueueSend(osHandles->queue.mp3_control, &cntl, 100); }
+		else if(MATCH("open", command)) {
+			char * file_path = strtok(NULL, "");
+			if (file_path[1] == ':') { //absolute URL
+				printf("absolute [%s]\n", file_path);
 			}
-			iprintf("\n%4u File(s), %10u bytes total\n%4u Dir(s)", numFiles, fileBytesTotal, numDirs);
+			else if (strlen(file_path) > 0){  //relative URL
+				unsigned int current_dir_end = strlen(current_dir);
+				current_dir[current_dir_end] = '/';
+				strcpy ( &(current_dir[current_dir_end+1]) ,file_path);
 
-			if (f_getfree(uartInput, (DWORD*) &fileBytesTotal, &fs) == FR_OK)
-			{
-				iprintf(", %10uK bytes free\n", fileBytesTotal * fs->csize / 2);
+				// now send the string over the queue.
+				printf("sending to queue: %s\n", current_dir);
+				if(xQueueSend(osHandles->queue.play_this_MP3, &(current_dir[0]), 100))
+					printf("sent!\n");
+				else printf("FAILED TO SEND ITEM (Timeout)!\n");
+				//done sending
+
+				current_dir[current_dir_end] = 0;  //restore current_dir
 			}
 		}
+
+		/*---------Filesystem opperations--------*/
+		else if(MATCH("cd", command)) {
+			char * file_path = strtok(NULL, "");
+
+			if (file_path[1] == ':') { //absolute URL
+				strcpy( current_dir, file_path);
+				printf("(abs) ");
+			}
+			else if (file_path == NULL){ //no path.. go home (root)
+				strcpy( current_dir, "0:");
+				printf("(~) ");
+			}
+			else {  //relative URL
+				unsigned int current_dir_end = strlen(current_dir);
+				current_dir[current_dir_end] = '/';
+				strcpy ( &(current_dir[current_dir_end+1]) ,file_path);
+				printf("(rel) ");
+			}
+			printf("current_dir is now: [%s]\n", current_dir);
+		}
+		else if(MATCH("pwd", command)) { rprintf("%s\n",current_dir); }
+		else if(MATCH("scan", command)) {
+			char long_pathname[100] = "0:";
+			rprintf("scanning 0:/\n");
+			scan_files(long_pathname);
+		}
+		else if(MATCH("ls", command)) {
+			char * dir_path = strtok(NULL, "");
+			dir_ls( (dir_path == NULL)? current_dir : dir_path,FALSE,FALSE);
+		}
+		else if(MATCH("ls-l", command)) { char * dir_path = strtok(NULL, ""); dir_ls( (dir_path == NULL)? current_dir : dir_path,FALSE,TRUE); }
 		else if(MATCH(command, "read")) {
-			char *filename = strtok(0, "");
-			rprintf("File to read: |%s|\n", filename);
-
-			FIL file;
-			if(FR_OK == f_open(&file, filename, (FA_READ | FA_OPEN_EXISTING)))
-			{
-				rprintf("File successfully opened\n");
-				char buff[513] = {0};
-
-				const unsigned int bytesToRead = 512;
-				unsigned int bytesRead = 0;
-				rprintf("File Contents:\n");
-				printLine();
-				do
-				{
-					if(FR_OK != f_read(&file, buff, bytesToRead, &bytesRead))
-					{
-						rprintf("--Failed to read file after having it opened--\n");
-						break;
-					}
-					rprintf("    %s", buff);
-				}while(bytesRead == bytesToRead);
-				printLine();
-
-				f_close(&file);
-				rprintf("File is closed\n");
+			char * file_path = strtok(NULL, "");
+			if (file_path[1] == ':') { //absolute URL
+				open_file(file_path);
 			}
-			else
-			{
-				rprintf("Failed to open the file\n");
+			else if (strlen(file_path) > 0){  //relative URL
+				unsigned int current_dir_end = strlen(current_dir);
+				current_dir[current_dir_end] = '/';
+				strcpy ( &(current_dir[current_dir_end+1]) ,file_path);
+				open_file(current_dir);
+				current_dir[current_dir_end] = 0;  //restore current_dir
 			}
 		}
-		else if(MATCH(command, "write")) {
-			char *filename = strtok(0, "");
-			rprintf("File to write: |%s|\n", filename);
 
-			FIL file;
-			if(FR_OK == f_open(&file, filename, (FA_WRITE | FA_CREATE_ALWAYS)))
-			{
-				rprintf("File successfully opened\n");
-				char buff[] = "File written using FATFS From Chen\n";
-
-				unsigned int bytesWritten = 0;
-				if(FR_OK != f_write(&file, buff, sizeof(buff), &bytesWritten))
-				{
-					rprintf("Failed to write file\n");
-				}
-
-				f_close(&file);
-				rprintf("File is closed\n");
-			}
-			else
-			{
-				rprintf("Failed to open the file\n");
-			}
-		}
+		/*---------cpu info opperations--------*/
 		else if (MATCH(command, "CRASH")) {
 			char *crashType = strtok(NULL, "");
 
@@ -185,9 +183,9 @@ void uartUI(void *pvParameters)
 			else if(MATCH(crashType, "DABORT"))	performDABORTCrash();
 			else rprintf("Define the crash type as either UNDEF, PABORT, or DABORT\n");
 		}
-#if configGENERATE_RUN_TIME_STATS
+		#if configGENERATE_RUN_TIME_STATS
 		else if(MATCH(command, "CPU")) {
-			vTaskGetRunTimeStats(uartInput, 0);
+			 vTaskGetRunTimeStats(uartInput, 0);
 			rprintf("%s", uartInput);
 		}
 		else if(MATCH(command, "CPUr")) {
@@ -207,45 +205,19 @@ void uartUI(void *pvParameters)
 				rprintf("You must define a delay time in milliseconds as parameter.\n");
 			}
 		}
-#endif
-#if INCLUDE_uxTaskGetStackHighWaterMark
-		else if(MATCH(command, "info")) {
-
-			#if(configUSE_TRACE_FACILITY != 0)
-				char buff[512];
-				vTaskList((signed char*)buff);
-				rprintf("%s\n", buff);
-			#else
-				// Total tasks is #tasks -1 for IDLE Task
-				rprintf("Task Stack Watermarks (Closer to 0 = Bad)\n");
-				for(int i = 0; i < uxTaskGetNumberOfTasks()-1; i++)
-				{
-					xTaskHandle *h = (xTaskHandle*)((unsigned)&(osHandles->task) + (unsigned)(sizeof(xTaskHandle)*i));
-					if(*h != 0)
-					{
-						rprintf("Task #%i: % 5i\n", (i+1), 4*uxTaskGetStackHighWaterMark((*h)));
-					}
-				}
-			#endif
+		#endif
+		#if INCLUDE_uxTaskGetStackHighWaterMark
+		else if(MATCH(command, "watermark")) {
+			rprintf("High watermarks (closer to zero = bad)\n");
+			rprintf("userInterface : % 5i\n", 4*uxTaskGetStackHighWaterMark(osHandles->task.userInterface));
+			rprintf("ten_ms_check : % 5i\n", 4*uxTaskGetStackHighWaterMark(osHandles->task.ten_ms_check));
+			rprintf("port_expander_task : % 5i\n", 4*uxTaskGetStackHighWaterMark(osHandles->task.port_expander_task));
+			rprintf("sd_card_detect : % 5i\n", 4*uxTaskGetStackHighWaterMark(osHandles->task.sd_card_detect));
+			rprintf("mp3_task : % 5i\n", 4*uxTaskGetStackHighWaterMark(osHandles->task.mp3_task));
 		}
-#endif
+		#endif
 		else if (MATCH("HELP", command)) {
-			rprintf("\n");
-			printLine();
-			rprintf("Command list:\n");
-			printLine();
-			rprintf("echo <anything>    - Echoes back anything sent.\n");
-			rprintf("ls                 - Get directory listing.\n");
-				#if configGENERATE_RUN_TIME_STATS
-			rprintf("CPU                - Show tasks and CPU Allocation.\n");
-			rprintf("CPUr               - Show tasks and CPU Allocation & reset counters\n");
-			rprintf("CPUn <# ms>        - Reset counters, delay, then report CPU usage & reset counters\n");
-				#endif
-				#if INCLUDE_uxTaskGetStackHighWaterMark
-			rprintf("info               - Show tasks and their Stack-high watermark.\n");
-				#endif
-			rprintf("CRASH <Param>      - Crashes the system (Parameter: UNDEF, PABORT, DABORT)\n\n");
-			printLine();
+			rprintf("Command list:\n fix me!");
 		}
 		else {
 			rprintf("Command not recognized.\n");
@@ -294,3 +266,139 @@ void getUartLine(char* uartInput)
 		}
 	}
 }
+
+void open_file(char * filename)
+{
+	rprintf("File to read: |%s|\n", filename);
+
+	FIL file;
+	FRESULT rstat = f_open(&file, filename, (FA_READ | FA_OPEN_EXISTING));
+	if (rstat != FR_OK) {
+		rprintf("open error #%i (0x%02X).\n",rstat,rstat);
+		return;
+	}
+	char buff[513];
+	const unsigned int bytesToRead = sizeof(buff);
+	rprintf("bytesToRead == %i",bytesToRead);
+
+	unsigned int bytesRead = 0;
+	do {
+		f_read(&file, buff, bytesToRead, &bytesRead);
+		buff[bytesRead]=0;
+		rprintf("%s",buff);
+	}while(bytesRead == bytesToRead);
+	f_close(&file);
+	rprintf("<EOF>\n");
+}
+
+void dir_ls(char * dirPath, unsigned char show_hidden, unsigned char show_all)
+{
+	DIR Dir;
+	FILINFO Finfo;
+	//FATFS *fs;
+	FRESULT returnCode = FR_OK;
+
+	unsigned int fileBytesTotal, numFiles, numDirs;
+	fileBytesTotal = numFiles = numDirs = 0;
+	#if _USE_LFN
+	char Lfname[60];
+	#endif
+
+	//char dirPath[] = "0:";
+	if (RES_OK != (returnCode = f_opendir(&Dir, dirPath))) {
+		rprintf("Invalid directory: |%s| code %i\n", dirPath,returnCode);
+		return;
+	}
+	for (;;) {
+		#if _USE_LFN
+		Finfo.lfname = Lfname;
+		Finfo.lfsize = sizeof(Lfname);
+		#endif
+
+		returnCode = f_readdir(&Dir, &Finfo);
+		if ( (FR_OK != returnCode) || !Finfo.fname[0])
+			break;
+		if ( show_hidden || (!(Finfo.fattrib & AM_HID) && (Finfo.fname[0] != '.'))) {
+			if (Finfo.fattrib & AM_DIR) { numDirs++; }
+			else{ numFiles++; fileBytesTotal += Finfo.fsize; }
+			if (show_all) {
+				iprintf("%c%c%c%c%c %u/%2u/%2u %2u:%2u %10lu %13s",
+						(Finfo.fattrib & AM_DIR) ? 'D' : '-',
+						(Finfo.fattrib & AM_RDO) ? 'R' : '-',
+						(Finfo.fattrib & AM_HID) ? 'H' : '-',
+						(Finfo.fattrib & AM_SYS) ? 'S' : '-',
+						(Finfo.fattrib & AM_ARC) ? 'A' : '-',
+						(Finfo.fdate >> 9) + 1980, (Finfo.fdate >> 5) & 15, Finfo.fdate & 31,
+						(Finfo.ftime >> 11), (Finfo.ftime >> 5) & 63, Finfo.fsize, &(Finfo.fname[0]));
+				#if _USE_LFN
+				iprintf(" -- %s", Lfname);
+				#endif
+				iprintf("\n");
+			}
+			else {
+				rprintf("%s \t", &(Finfo.fname[0]) );
+				rprintf( ((numDirs+numFiles)%2)? "\t":"\n" );
+			}
+		}
+	}
+	if (show_all) iprintf("\n%4u File(s), %10u bytes total\n%4u Dir(s)", numFiles, fileBytesTotal, numDirs);
+	else rprintf("\n");
+	//if (f_getfree(uartInput, (DWORD*) &fileBytesTotal, &fs) == FR_OK)
+	//{
+	//	iprintf(", %10uK bytes free\n", fileBytesTotal * fs->csize / 2);
+	//}
+}
+
+
+//all_artists[Sizeof_all_artists]
+
+FRESULT scan_files (char* path)
+{
+    FRESULT res;
+    FILINFO fno;
+    DIR dir;
+	FIL file; //to open file and read mp3 id3 data
+	char tag[40]; //to read mp3 id3 data to.
+    int i;
+    char *fn;
+	#if _USE_LFN
+    static char lfn[_MAX_LFN * (_DF1S ? 2 : 1) + 1];
+    fno.lfname = lfn;
+    fno.lfsize = sizeof(lfn);
+	#endif
+
+    res = f_opendir(&dir, path);
+    if (res == FR_OK) {
+        i = strlen(path);
+        for (;;) {
+            res = f_readdir(&dir, &fno);
+            if (res != FR_OK || fno.fname[0] == 0) break;
+			if ((fno.fattrib & AM_HID) || (fno.fname[0] == '.')) continue;
+			#if _USE_LFN
+				fn = *fno.lfname ? fno.lfname : fno.fname;
+			#else
+				fn = fno.fname;
+			#endif
+            if (fno.fattrib & AM_DIR) {
+                sprintf(&path[i], "/%s", fn);
+                res = scan_files(path);
+                if (res != FR_OK) break;
+                path[i] = 0;
+            } else {
+				char* got_ext = strrchr(fn,'.');
+				if ((got_ext != NULL) && (0 == strncmp(got_ext, ".mp3", 4)) ){
+					sprintf(&path[i], "/%s", fn);  //get the whole file-path
+					if (FR_OK == f_open(&file, path, (FA_READ | FA_OPEN_EXISTING)))
+					read_ID3_info(TITLE_ID3,tag,sizeof(tag),&file);
+					rprintf("found: %s",tag);
+					read_ID3_info(ARTIST_ID3,tag,sizeof(tag),&file);
+					rprintf(" by %s\n",tag);
+					path[i] = 0;  //restore path to what it was before.
+				}
+            }
+        }
+    }
+
+    return res;
+}
+

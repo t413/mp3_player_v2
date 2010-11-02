@@ -6,6 +6,7 @@ extern "C" {
 
 #include "../System/lpc214x.h"
 
+#define STA_I2C_DEV 0x86
 
 // TODO: 3a. (Done) Finish the # Defines at STA013.h header file.
 #define STA013_CS_PIN		(1<<29)					// Select the PIN# for Decoder's CS Signal

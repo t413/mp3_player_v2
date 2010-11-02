@@ -12,15 +12,22 @@
 typedef struct
 {
 	struct {
+		xQueueHandle play_this_MP3;
+		xQueueHandle mp3_control;
+		xQueueHandle effect;
 	}queue;
 
 	struct {
 		xTaskHandle userInterface;
-		xTaskHandle diskTimer;
+		xTaskHandle ten_ms_check;
+		xTaskHandle port_expander_task;
+		xTaskHandle sd_card_detect;
+		xTaskHandle mp3_task;
 	}task;
 
 	struct {
-		xSemaphoreHandle SPI;
+		xSemaphoreHandle SPI;  // spi lock
+		xSemaphoreHandle I2C;  // i2c lock
 	}lock;
 }OSHANDLES;
 

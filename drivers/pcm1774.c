@@ -1,6 +1,6 @@
 #include "pcm1774.h"
 
-// TODO: 4a.  Include the I2C Driver File here
+#include "./i2c.h"
 
 #ifndef FALSE
 #define FALSE 0
@@ -15,9 +15,7 @@
 //! @param data is the data to write to register
 void pcm1774_sendByte(unsigned char address, unsigned char data)
 {
-	// TODO:4b.  Fill in I2C Driver write function for I2C interfaced DAC
-	// Write PCM_1774_ADDRESS at "address" with "data"
-	//i2cWriteDeviceRegister(PCM_1774_ADDRESS, address, data) ???
+	i2c_send_byte(PCM_1774_ADDRESS, address, data);
 }
 
 //! Low level function to read a byte from the PCM1774
@@ -25,10 +23,7 @@ void pcm1774_sendByte(unsigned char address, unsigned char data)
 //! @returns the byte read from the register
 unsigned char pcm1774_readByte(unsigned char address)
 {
-	// TODO: 4c.  Fill in I2C Driver read function for I2C Interfaced DAC
-	// Read PCM_1774_ADDRESS from "address"
-	return 0;
-	//return i2cReadDeviceRegister(PCM_1774_ADDRESS, address) ???
+	return i2c_receive_byte(PCM_1774_ADDRESS, address);
 }
 
 //! @param	address Address to write to

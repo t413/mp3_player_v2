@@ -1,20 +1,15 @@
 #include "sta013.h"
 
-// TODO: 3b.  Include I2C Header File
+#include "./i2c.h"
 
 unsigned char sta013ReadReg(unsigned char reg)
 {
-	// TODO: 3c.  Fill in your I2C Read Register function here
-	// Read STA_I2C_DEV (device) and register reg
-	return 0;
-	//return i2cReadDeviceRegister(STA_I2C_DEV, reg) ???
+	return i2c_receive_byte(STA_I2C_DEV, reg);
 }
 
 void sta013WriteReg(unsigned char reg, unsigned char data)
 {
-	// TODO: 3d.  Fill in I2C Write Register Function here
-	// Write STA_I2C_DEV (device) and write register reg with "data"
-	//i2cWriteDeviceRegister(STA_I2C_DEV, reg, data) ???
+	i2c_send_byte(STA_I2C_DEV, reg, data);
 }
 
 
