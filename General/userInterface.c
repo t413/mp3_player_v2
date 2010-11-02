@@ -49,7 +49,6 @@ void sd_card_detect(void *pvParameters){
 	}
 }
 
-
 void uartUI(void *pvParameters)
 {
 	OSHANDLES *osHandles = (OSHANDLES*)pvParameters;
@@ -357,8 +356,6 @@ FRESULT scan_files (char* path)
     FRESULT res;
     FILINFO fno;
     DIR dir;
-	FIL file; //to open file and read mp3 id3 data
-	char tag[40]; //to read mp3 id3 data to.
     int i;
     char *fn;
 	#if _USE_LFN
@@ -371,6 +368,7 @@ FRESULT scan_files (char* path)
     if (res == FR_OK) {
         i = strlen(path);
         for (;;) {
+        	vTaskDelay(0);
             res = f_readdir(&dir, &fno);
             if (res != FR_OK || fno.fname[0] == 0) break;
 			if ((fno.fattrib & AM_HID) || (fno.fname[0] == '.')) continue;
@@ -387,6 +385,8 @@ FRESULT scan_files (char* path)
             } else {
 				char* got_ext = strrchr(fn,'.');
 				if ((got_ext != NULL) && (0 == strncmp(got_ext, ".mp3", 4)) ){
+					FIL file; //to open file and read mp3 id3 data
+					char tag[40]; //to read mp3 id3 data to.
 					sprintf(&path[i], "/%s", fn);  //get the whole file-path
 					if (FR_OK == f_open(&file, path, (FA_READ | FA_OPEN_EXISTING)))
 					read_ID3_info(TITLE_ID3,tag,sizeof(tag),&file);

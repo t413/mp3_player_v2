@@ -63,10 +63,10 @@ int main (void)
 	diskio_initializeSPIMutex(&(System.lock.SPI));
 	initialize_SdCardSignals();
 
-	xTaskCreate( uartUI, (signed char*)"Uart UI", STACK_BYTES(1024*4), &System, PRIORITY_MEDIUM,  &System.task.userInterface );
+	xTaskCreate( sd_card_detect, (signed char*)"sd_card_detect", STACK_BYTES(1024), &System, PRIORITY_LOW, &System.task.sd_card_detect );
+	xTaskCreate( uartUI, (signed char*)"userInterface", STACK_BYTES(1024*6), &System, PRIORITY_MEDIUM,  &System.task.userInterface );
 	xTaskCreate( ten_ms_check, (signed char*)"10ms", STACK_BYTES(256), &System, PRIORITY_MEDIUM, &System.task.ten_ms_check );
 	xTaskCreate( port_expander_task, (signed char*)"port-expander", STACK_BYTES(512), &System, PRIORITY_LOW, &System.task.port_expander_task );
-	xTaskCreate( sd_card_detect, (signed char*)"sd_card_detect", STACK_BYTES(1024), &System, PRIORITY_LOW, &System.task.sd_card_detect );
 	xTaskCreate( mp3_task, (signed char*)"mp3 task", STACK_BYTES(1024*6), &System, PRIORITY_LOW, &System.task.mp3_task );
 
 	rprintf("\n-- Starting FreeRTOS --\n");
