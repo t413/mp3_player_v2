@@ -7,10 +7,20 @@
 
 typedef struct {
 	unsigned int id;
-	char name[20];
+	char * name;
+	char * filename;
+	Artist * next;
+}Track;
+
+typedef struct {
+	unsigned int id;
+	char * name;
+	Track * tracks;
+	Artist * next;
 }Artist;
-#define Sizeof_all_artists 5
-Artist all_artists[Sizeof_all_artists];
+
+Artist * artist_list;
+
 
 void sd_card_detect(void *pvParameters);
 void uartUI(void *pvParameters);

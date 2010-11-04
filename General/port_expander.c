@@ -97,7 +97,20 @@ void port_expander_task(void *pvParameters) {
 				out_volume = max(0, out_volume-10);  // Scale 0-100
 				pcm1774_OutputVolume(out_volume, out_volume);
 			}
-			
+			// Seek Foreward
+			if ((readButtons & BUTTON_5) && (readButtons & BUTTON_3) && (last_buttons==0)) {
+				unsigned char cntl = SEEK_F_8X;
+				xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
+			}
+			// Seek back
+			if ((readButtons & BUTTON_5) && (readButtons & BUTTON_4) && (last_buttons==0)) {
+				unsigned char cntl = SEEK_R_8X;
+				xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
+			}
+			if ((last_buttons & BUTTON_5) && (readButtons==0)) {
+				unsigned char cntl = RESUME;
+				xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
+			}
 			
 			/* ---- trailing edge triggered ---- */
 			// load a song

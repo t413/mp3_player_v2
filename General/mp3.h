@@ -12,10 +12,10 @@
 #define PAUSE 2
 #define RESUME 3
 #define PLAY_PAUSE 4
-#define SEEK_F_FAST 5
-#define SEEK_F_SLOW 6
-#define SEEK_R_FAST 7
-#define SEEK_R_SLOW 8
+#define SEEK_F_8X 5
+#define SEEK_F_2X 6
+#define SEEK_R_8X 7
+#define SEEK_R_2X 8
 
 struct {
 	unsigned int has_song : 1;  //if there's a song being played, may be paused.

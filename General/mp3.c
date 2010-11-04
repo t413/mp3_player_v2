@@ -55,6 +55,7 @@ void mp3_task(void *pvParameters) {
 				read_ID3_info(ARTIST_ID3,tag,sizeof(tag),&file);
 				rprintf(" by %s\n",tag);
 				
+				player_status.position = 0;
 				while (1){
 					/* ---- check about the control queue ---- */
 					unsigned char cntl = 0;
@@ -70,6 +71,10 @@ void mp3_task(void *pvParameters) {
 					}
 					if (cntl == STOP) break;
 					
+					if (cntl == SEEK_F_8X) { f_lseek(&file, file.fptr + 4096*8); player_status.position += 8; }
+					if (cntl == SEEK_R_8X) { f_lseek(&file, file.fptr - 4096*8); player_status.position -= 8; }
+
+					player_status.position += 1;
 					/* ---- read a chunk of data to the buffer ---- */
 					player_status.playing = 1;
 					char buff[4096];
@@ -78,8 +83,6 @@ void mp3_task(void *pvParameters) {
 					f_read(&file, buff, sizeof(buff), &bytesRead);
 					player_status.read_speed = bytesRead/(xTaskGetTickCount()-start_ms);
 
-					//rprintf("read %i bytes\n",bytesRead);
-					
 					/* ---- send chunked data to the mp3 decoder ---- */
 					int i = 0;
 					while( i < bytesRead) {
@@ -94,12 +97,12 @@ void mp3_task(void *pvParameters) {
 					}
 					// TODO: change 4094 to 4095 or whatever is _correct_.
 					if(4094 > bytesRead){ // Last Chunk in file
-						player_status.has_song = 0;
-						player_status.playing = 0;
 						break; // Break outer loop, song ended
 					}
 				}
 				f_close(&file);
+				player_status.has_song = 0;
+				player_status.playing = 0;
 			}
 		}
 	}
