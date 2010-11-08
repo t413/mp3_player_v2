@@ -52,6 +52,7 @@ void port_expander_task(void *pvParameters) {
 	}
 	
 	//unsigned int period = 100;
+	unsigned int artist_i = 0, track_i = 0;
 	unsigned char eButt = 0;
 	unsigned int i = 0;
 	unsigned char last_buttons = 0, out_volume = 20;
@@ -67,11 +68,22 @@ void port_expander_task(void *pvParameters) {
 			xSemaphoreGive( osHandles->lock.I2C );
 		
 			/* ---- leading edge triggered ---- */
-			// PLAY-PAUSE
-			if ((readButtons & BUTTON_0) && (last_buttons==0)) {
-				unsigned char cntl = PLAY_PAUSE;
-				xQueueSend(osHandles->queue.mp3_control, &cntl, 1000);
+			// next track
+			if ((readButtons == BUTTON_0) && (last_buttons==0)) {
+				unsigned char cntl = NEXT_T;
+				xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
 			}
+			// PLAY-PAUSE
+			else if ((readButtons == BUTTON_1) && (last_buttons==0)) {
+				unsigned char cntl = PLAY_PAUSE;
+				xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
+			}
+			// prev track
+			else if ((readButtons == BUTTON_2) && (last_buttons==0)) {
+				unsigned char cntl = PREV_T;
+				xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
+			}
+			/*
 			// STOP
 			else if ((readButtons & BUTTON_1) && (last_buttons==0)) {
 				unsigned int num_queued = uxQueueMessagesWaiting(osHandles->queue.play_this_MP3);
@@ -86,47 +98,58 @@ void port_expander_task(void *pvParameters) {
 			if ((readButtons & BUTTON_2) && (last_buttons==0)) {
 				unsigned char cntl = STOP;
 				xQueueSend(osHandles->queue.mp3_control, &cntl, 1000);
-			}
+			}*/
 			// VOLUME UP
-			if ((readButtons & BUTTON_3) && (last_buttons==0)) {
+			else if ((readButtons == BUTTON_3) && (last_buttons==0)) {
 				out_volume = min(100, out_volume+10);  // Scale 0-100
 				pcm1774_OutputVolume(out_volume, out_volume);
 			}
 			// VOLUME DOWN
-			if ((readButtons & BUTTON_4) && (last_buttons==0)) {
+			else if ((readButtons == BUTTON_4) && (last_buttons==0)) {
 				out_volume = max(0, out_volume-10);  // Scale 0-100
 				pcm1774_OutputVolume(out_volume, out_volume);
 			}
 			// Seek Foreward
-			if ((readButtons & BUTTON_5) && (readButtons & BUTTON_3) && (last_buttons==0)) {
+			else if ((readButtons & BUTTON_5) && (readButtons & BUTTON_3) && (last_buttons==0)) {
 				unsigned char cntl = SEEK_F_8X;
 				xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
 			}
 			// Seek back
-			if ((readButtons & BUTTON_5) && (readButtons & BUTTON_4) && (last_buttons==0)) {
+			else if ((readButtons & BUTTON_5) && (readButtons & BUTTON_4) && (last_buttons==0)) {
 				unsigned char cntl = SEEK_R_8X;
 				xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
 			}
-			if ((last_buttons & BUTTON_5) && (readButtons==0)) {
+			// end seek
+			else if ((last_buttons == BUTTON_5) && (readButtons==0)) {
 				unsigned char cntl = RESUME;
 				xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
 			}
 			
-			/* ---- trailing edge triggered ---- */
-			// load a song
-			if ((last_buttons & BUTTON_7) && (readButtons==0)) {
-				char songnum = (last_buttons & ~BUTTON_7) + 0x30;
-				unsigned char name[] = "0:/Music/mike/_.mp3";
-				name[14] = songnum;
-				rprintf("but sending %s\n",name);
-				xQueueSend(osHandles->queue.play_this_MP3, &(name[0]), 100);
+			// next artist
+			else if ((readButtons == BUTTON_6) && (last_buttons==0)) {
+				if (artist_i < (num_of_artists-1)){
+					if (player_status.playing == 1){
+						unsigned char cntl = STOP;
+						xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
+						vTaskDelay(10);
+					}
+					Artist * this_artist = get_artist_number(++artist_i, artist_list);
+					//rprintf("++n==%i %s\n",artist_i,this_artist->name);
+					xQueueSend(osHandles->queue.playback_playlist, &(this_artist->tracks), 50);
+				}
 			}
-			if ((last_buttons & BUTTON_6) && (readButtons==0)) {
-				char songnum = (last_buttons & ~BUTTON_6) + 0x30;
-				unsigned char name[] = "0:/Music/us/_.mp3";
-				name[12] = songnum;
-				rprintf("but sending %s\n",name);
-				xQueueSend(osHandles->queue.play_this_MP3, &(name[0]), 100);
+			// prev artist
+			else if ((readButtons == BUTTON_7) && (last_buttons==0)) {
+				if (artist_i > 0){
+					if (player_status.playing == 1){
+						unsigned char cntl = STOP;
+						xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
+						vTaskDelay(10);
+					}
+					Artist * this_artist = get_artist_number(--artist_i, artist_list);
+					//rprintf("++n==%i %s\n",artist_i,this_artist->name);
+					xQueueSend(osHandles->queue.playback_playlist, &(this_artist->tracks), 50);
+				}
 			}
 			
 			//write to the LEDS

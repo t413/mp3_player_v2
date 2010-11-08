@@ -12,7 +12,7 @@
 typedef struct
 {
 	struct {
-		xQueueHandle play_this_MP3;
+		xQueueHandle playback_playlist;
 		xQueueHandle mp3_control;
 		xQueueHandle effect;
 	}queue;

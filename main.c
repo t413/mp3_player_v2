@@ -54,7 +54,7 @@ int main (void)
 	System.lock.SPI = xQueueCreateMutex();
 	System.lock.I2C = xQueueCreateMutex();
 
-	System.queue.play_this_MP3 = xQueueCreate(3,128);
+	System.queue.playback_playlist = xQueueCreate(1,sizeof(Track *)); //send a playlist to play.
 	System.queue.mp3_control = xQueueCreate(1, sizeof(unsigned char));
 	System.queue.effect = xQueueCreate(3, sizeof(unsigned char));
 

@@ -5,22 +5,6 @@
 #define MATCH(a,b)		(strcmp(a,b) == 0)
 #define IS_SD_CARD_HERE (!(IOPIN0 & (1<<16)))
 
-typedef struct {
-	unsigned int id;
-	char * name;
-	char * filename;
-	Artist * next;
-}Track;
-
-typedef struct {
-	unsigned int id;
-	char * name;
-	Track * tracks;
-	Artist * next;
-}Artist;
-
-Artist * artist_list;
-
 
 void sd_card_detect(void *pvParameters);
 void uartUI(void *pvParameters);

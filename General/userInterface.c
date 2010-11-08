@@ -22,7 +22,6 @@
 
 
 /* ---- private declarations ---- */
-FRESULT scan_files (char* path);
 void getUartLine(char* uartInput);
 void dir_ls(char * dirPath, unsigned char show_hidden, unsigned char show_all);
 void open_file(char * file_path);
@@ -38,6 +37,7 @@ void sd_card_detect(void *pvParameters){
 			rprintf("mounting card..");
 			FRESULT res = f_mount(0, &SDCard); // Mount the Card on the File System
 			rprintf(" done w/%s..\n", (res)? "failure":"success");
+			
 		}
 		else if (!IS_SD_CARD_HERE && last_sd) {  //if sd card is gone for first time
 			rprintf("un-mounting card..");
@@ -49,21 +49,28 @@ void sd_card_detect(void *pvParameters){
 	}
 }
 
+
 void uartUI(void *pvParameters)
 {
 	OSHANDLES *osHandles = (OSHANDLES*)pvParameters;
 	char uartInput[128];
 	char current_dir[128] = "0:";
 
+	artist_list = NULL;
 
-	//i2c_init(400); <- moved to main();
-
+	//i2c_init(400); <- moved to main();	
+	
 	rprintf("init sta013\n");
 	initialize_sta013();
 
 	rprintf("pcm1774\n");
 	initialize_pcm1774();
 
+	vTaskDelay(100);
+	scan_root();  //scan/populate database of artist & their albums.
+
+	artist_list->tracks = bubblesort(artist_list->tracks);
+	
 	for (;;)
 	{
 		rprintf("tim: "); //print prompt
@@ -86,6 +93,13 @@ void uartUI(void *pvParameters)
 			if(xQueueSend(osHandles->queue.effect, &effect_int, 100))
 				rprintf(".. sent!\n");
 		}
+		else if(MATCH("list", command)) {
+			display_track_list(artist_list);
+		}
+		else if(MATCH("clear", command)) {
+			clear_track_list();
+		}
+		
 
 		/*---------music commands--------*/
 		else if(MATCH("speed", command)) {
@@ -97,17 +111,17 @@ void uartUI(void *pvParameters)
 				rprintf(".. sent!\n");
 		}
 		else if(MATCH("stop", command)) {
-			unsigned int num_queued = uxQueueMessagesWaiting(osHandles->queue.play_this_MP3);
+			/*unsigned int num_queued = uxQueueMessagesWaiting(osHandles->queue.play_this_MP3);
 			rprintf(" %i queued, removing each.\n",num_queued);
 			while (num_queued--) {
 				char file_name[128];
 				xQueueReceive(osHandles->queue.play_this_MP3, &file_name[0],0);
-			}
+			}*/
 			unsigned char cntl = STOP;
 			xQueueSend(osHandles->queue.mp3_control, &cntl, 100);
 		}
 		else if (MATCH("next", command)) { unsigned char cntl = STOP; xQueueSend(osHandles->queue.mp3_control, &cntl, 100); }
-		else if(MATCH("open", command)) {
+		/*else if(MATCH("open", command)) {
 			char * file_path = strtok(NULL, "");
 			if (file_path[1] == ':') { //absolute URL
 				printf("absolute [%s]\n", file_path);
@@ -126,7 +140,7 @@ void uartUI(void *pvParameters)
 
 				current_dir[current_dir_end] = 0;  //restore current_dir
 			}
-		}
+		}*/
 
 		/*---------Filesystem opperations--------*/
 		else if(MATCH("cd", command)) {
@@ -150,9 +164,7 @@ void uartUI(void *pvParameters)
 		}
 		else if(MATCH("pwd", command)) { rprintf("%s\n",current_dir); }
 		else if(MATCH("scan", command)) {
-			char long_pathname[100] = "0:";
-			rprintf("scanning 0:/\n");
-			scan_files(long_pathname);
+			scan_root();
 		}
 		else if(MATCH("ls", command)) {
 			char * dir_path = strtok(NULL, "");
@@ -349,56 +361,5 @@ void dir_ls(char * dirPath, unsigned char show_hidden, unsigned char show_all)
 }
 
 
-//all_artists[Sizeof_all_artists]
 
-FRESULT scan_files (char* path)
-{
-    FRESULT res;
-    FILINFO fno;
-    DIR dir;
-    int i;
-    char *fn;
-	#if _USE_LFN
-    static char lfn[_MAX_LFN * (_DF1S ? 2 : 1) + 1];
-    fno.lfname = lfn;
-    fno.lfsize = sizeof(lfn);
-	#endif
-
-    res = f_opendir(&dir, path);
-    if (res == FR_OK) {
-        i = strlen(path);
-        for (;;) {
-        	vTaskDelay(0);
-            res = f_readdir(&dir, &fno);
-            if (res != FR_OK || fno.fname[0] == 0) break;
-			if ((fno.fattrib & AM_HID) || (fno.fname[0] == '.')) continue;
-			#if _USE_LFN
-				fn = *fno.lfname ? fno.lfname : fno.fname;
-			#else
-				fn = fno.fname;
-			#endif
-            if (fno.fattrib & AM_DIR) {
-                sprintf(&path[i], "/%s", fn);
-                res = scan_files(path);
-                if (res != FR_OK) break;
-                path[i] = 0;
-            } else {
-				char* got_ext = strrchr(fn,'.');
-				if ((got_ext != NULL) && (0 == strncmp(got_ext, ".mp3", 4)) ){
-					FIL file; //to open file and read mp3 id3 data
-					char tag[40]; //to read mp3 id3 data to.
-					sprintf(&path[i], "/%s", fn);  //get the whole file-path
-					if (FR_OK == f_open(&file, path, (FA_READ | FA_OPEN_EXISTING)))
-					read_ID3_info(TITLE_ID3,tag,sizeof(tag),&file);
-					rprintf("found: %s",tag);
-					read_ID3_info(ARTIST_ID3,tag,sizeof(tag),&file);
-					rprintf(" by %s\n",tag);
-					path[i] = 0;  //restore path to what it was before.
-				}
-            }
-        }
-    }
-
-    return res;
-}
 
