@@ -53,8 +53,9 @@ void port_expander_task(void *pvParameters) {
 	
 	//unsigned int period = 100;
 	unsigned int artist_i = 0, track_i = 0;
-	unsigned char eButt = 0;
+	unsigned char eButt = 0, sent_seek = 0, leds_are_on = 1;
 	unsigned int i = 0;
+	unsigned long button_down_time = 0;
 	unsigned char last_buttons = 0, out_volume = 20;
 	for(;;i++)
 	{
@@ -70,8 +71,25 @@ void port_expander_task(void *pvParameters) {
 			/* ---- leading edge triggered ---- */
 			// next track
 			if ((readButtons == BUTTON_0) && (last_buttons==0)) {
-				unsigned char cntl = NEXT_T;
-				xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
+				button_down_time = xTaskGetTickCount();
+			}
+			else if ((readButtons == BUTTON_0) && (!sent_seek)) {
+				if ((xTaskGetTickCount() - button_down_time) > 500){
+					unsigned char cntl = SEEK_F_8X;
+					xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
+					sent_seek = 1;
+				}
+			}
+			else if ((last_buttons == BUTTON_0) && (readButtons==0)) {
+				if ((xTaskGetTickCount() - button_down_time) < 500){
+					unsigned char cntl = NEXT_T;
+					xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
+				}
+				else {
+					unsigned char cntl = RESUME;
+					xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
+				}
+				sent_seek = 0;
 			}
 			// PLAY-PAUSE
 			else if ((readButtons == BUTTON_1) && (last_buttons==0)) {
@@ -79,26 +97,27 @@ void port_expander_task(void *pvParameters) {
 				xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
 			}
 			// prev track
-			else if ((readButtons == BUTTON_2) && (last_buttons==0)) {
-				unsigned char cntl = PREV_T;
-				xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
+			if ((readButtons == BUTTON_2) && (last_buttons==0)) {
+				button_down_time = xTaskGetTickCount();
 			}
-			/*
-			// STOP
-			else if ((readButtons & BUTTON_1) && (last_buttons==0)) {
-				unsigned int num_queued = uxQueueMessagesWaiting(osHandles->queue.play_this_MP3);
-				while (num_queued--) {
-					char file_name[128];
-					xQueueReceive(osHandles->queue.play_this_MP3, &file_name[0],0);
+			else if ((readButtons == BUTTON_2) && (!sent_seek)) {
+				if ((xTaskGetTickCount() - button_down_time) > 500){
+					unsigned char cntl = SEEK_R_8X;
+					xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
+					sent_seek = 1;
 				}
-				unsigned char cntl = STOP;
-				xQueueSend(osHandles->queue.mp3_control, &cntl, 1000);
 			}
-			// NEXT
-			if ((readButtons & BUTTON_2) && (last_buttons==0)) {
-				unsigned char cntl = STOP;
-				xQueueSend(osHandles->queue.mp3_control, &cntl, 1000);
-			}*/
+			else if ((last_buttons == BUTTON_2) && (readButtons==0)) {
+				if ((xTaskGetTickCount() - button_down_time) < 500){
+					unsigned char cntl = PREV_T;
+					xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
+				}
+				else {
+					unsigned char cntl = RESUME;
+					xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
+				}
+				sent_seek = 0;
+			}
 			// VOLUME UP
 			else if ((readButtons == BUTTON_3) && (last_buttons==0)) {
 				out_volume = min(100, out_volume+10);  // Scale 0-100
@@ -109,20 +128,9 @@ void port_expander_task(void *pvParameters) {
 				out_volume = max(0, out_volume-10);  // Scale 0-100
 				pcm1774_OutputVolume(out_volume, out_volume);
 			}
-			// Seek Foreward
-			else if ((readButtons & BUTTON_5) && (readButtons & BUTTON_3) && (last_buttons==0)) {
-				unsigned char cntl = SEEK_F_8X;
-				xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
-			}
-			// Seek back
-			else if ((readButtons & BUTTON_5) && (readButtons & BUTTON_4) && (last_buttons==0)) {
-				unsigned char cntl = SEEK_R_8X;
-				xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
-			}
-			// end seek
+			// led's on/off.
 			else if ((last_buttons == BUTTON_5) && (readButtons==0)) {
-				unsigned char cntl = RESUME;
-				xQueueSend(osHandles->queue.mp3_control, &cntl, 50);
+				leds_are_on = !leds_are_on;
 			}
 			
 			// next artist
@@ -154,7 +162,7 @@ void port_expander_task(void *pvParameters) {
 			
 			//write to the LEDS
 			unsigned char effect = readButtons;
-			if ((player_status.playing) && (last_buttons == 0) && (readButtons == 0)){
+			if (leds_are_on && (player_status.playing) && (last_buttons == 0) && (readButtons == 0)){
 				if ((i/8)%2) effect = 1<<((i)%8);
 				else effect = 1<<(6-(i)%8+1);
 			}
