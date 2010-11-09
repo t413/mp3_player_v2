@@ -21,8 +21,9 @@ void ten_ms_check(void *pvParameters);
  * 1:    Not Used
  * 2:    UART Interrupt
  * 3:    Not Used
- * 4:    i2c interrupt
- * 5-16: Not Used
+ * 4:    Not Used
+ * 5:    i2c interrupt
+ * 6-16: Not Used
  */
 
 /* Resources Used
@@ -64,10 +65,10 @@ int main (void)
 	initialize_SdCardSignals();
 
 	xTaskCreate( sd_card_detect, (signed char*)"sd_card_detect", STACK_BYTES(1024), &System, PRIORITY_LOW, &System.task.sd_card_detect );
-	xTaskCreate( uartUI, (signed char*)"userInterface", STACK_BYTES(1024*6), &System, PRIORITY_MEDIUM,  &System.task.userInterface );
+	xTaskCreate( uartUI, (signed char*)"userInterface", STACK_BYTES(1024*4), &System, PRIORITY_MEDIUM,  &System.task.userInterface );
 	xTaskCreate( ten_ms_check, (signed char*)"10ms", STACK_BYTES(256), &System, PRIORITY_MEDIUM, &System.task.ten_ms_check );
 	xTaskCreate( port_expander_task, (signed char*)"port-expander", STACK_BYTES(512), &System, PRIORITY_LOW, &System.task.port_expander_task );
-	xTaskCreate( mp3_task, (signed char*)"mp3 task", STACK_BYTES(1024*6), &System, PRIORITY_LOW, &System.task.mp3_task );
+	xTaskCreate( mp3_task, (signed char*)"mp3 task", STACK_BYTES(1024*8), &System, PRIORITY_LOW, &System.task.mp3_task );
 
 	rprintf("\n-- Starting FreeRTOS --\n");
 	vTaskStartScheduler();	// This function will not return.

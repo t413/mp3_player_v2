@@ -4,10 +4,7 @@
  *  Created on: Oct 26, 2010
  *      Author: timo
  */
-#include "../FreeRTOS/FreeRTOS.h"	// Includes for RTOS & Other services provided by it:
-#include "../FreeRTOS/task.h"
-#include "../FreeRTOS/queue.h"
-#include "../FreeRTOS/semphr.h"
+
 #include "../osHandles.h"
 #include "../fat/ff.h"				// FAT File System Library
 #include "../fat/diskio.h" 			// Disk IO Initialize SPI Mutex
@@ -31,7 +28,11 @@ void mp3_task(void *pvParameters) {
 		
 	player_status.has_song = 0;
 	player_status.playing = 0;
-	
+
+	vTaskDelay(100);
+	scan_root();  //scan/populate database of artist & their albums.
+	//artist_list->tracks = bubblesort(artist_list->tracks);
+
 	for(;;)
 	{
 		Track * playlist;
@@ -49,7 +50,7 @@ void mp3_task(void *pvParameters) {
 				
 				/* ---- check file's extention. ---- */
 				char* got_ext = strrchr(this_song->filename,'.'); //get position of last '.'
-				if ((got_ext == NULL) || (0 != strncmp(got_ext, ".mp3", 4)) ){
+				if ((got_ext == NULL) || (0 != strncmp(got_ext, ".MP3", 4)) ){
 					rprintf("file not .mp3\n");
 					break; // filename didn't have a .mp3 extention.
 				}
@@ -114,7 +115,7 @@ void mp3_task(void *pvParameters) {
 				//done playing the current playlist position, increment and continue.
 				if (cntl == STOP) break;  //breaks the playlist loop..
 				else if (cntl == PREV_T) { //previous / skip to beginning of track.
-					if (player_status.position < 50){
+					if ((player_status.position < 50) && (player_status.playlist_pos > 0)){
 						player_status.playlist_pos--;
 					}
 				}
@@ -132,8 +133,8 @@ void mp3_task(void *pvParameters) {
 
 void scan_root(void){
 	if (artist_list != NULL) {rprintf("already scanned.\n");return;}
-	char long_pathname[40] = "0:";
-	rprintf("scanning 0:/\n");
+	char long_pathname[40] = "0:/MUSIC";
+	rprintf("scanning 0:/MUSIC\n");
 	scan_files(long_pathname);
 
 	num_of_artists = 0;
@@ -151,11 +152,6 @@ FRESULT scan_files (char* path)
     DIR dir;
     int i;
     char *fn;
-#if _USE_LFN
-    static char lfn[_MAX_LFN * (_DF1S ? 2 : 1) + 1];
-    fno.lfname = lfn;
-    fno.lfsize = sizeof(lfn);
-#endif
 	
     res = f_opendir(&dir, path);
     if (res == FR_OK) {
@@ -165,11 +161,7 @@ FRESULT scan_files (char* path)
             res = f_readdir(&dir, &fno);
             if (res != FR_OK || fno.fname[0] == 0) break;
 			if ((fno.fattrib & AM_HID) || (fno.fname[0] == '.')) continue;
-#if _USE_LFN
-			fn = *fno.lfname ? fno.lfname : fno.fname;
-#else
 			fn = fno.fname;
-#endif
             if (fno.fattrib & AM_DIR) {
 				path[i]='/';  //sprintf(&path[i], "/%s", fn);  
 				strcpy(&path[i+1],fn);  //get the whole file-path
@@ -178,7 +170,7 @@ FRESULT scan_files (char* path)
                 path[i] = 0;
             } else {
 				char* got_ext = strrchr(fn,'.');
-				if ((got_ext != NULL) && (0 == strncmp(got_ext, ".mp3", 4)) ){
+				if ((got_ext != NULL) && (0 == strncmp(got_ext, ".MP3", 4)) ){
 					FIL file; //to open file and read mp3 id3 data
 					char tag[20]; //to read mp3 id3 data to.
 					path[i]='/';  //sprintf(&path[i], "/%s", fn);  

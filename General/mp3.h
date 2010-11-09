@@ -40,7 +40,7 @@ void mp3_task(void *pvParameters);
 typedef struct Track {
 	unsigned int id;
 	char name[20];
-	char filename[30];
+	char filename[40];
 	struct Track * next;
 }Track;
 
