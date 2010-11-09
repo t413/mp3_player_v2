@@ -37,7 +37,7 @@ int main (void)
 	OSHANDLES System;            // Should contain all OS Handles
 
 	cpuSetupHardware();          // Setup PLL, enable MAM etc.
-	watchdogDelayUs(2000*1000);  // Some startup delay
+	watchdogDelayUs(200*1000);  // Some startup delay
 	uart0Init(38400, 256);       // 256 is size of Rx/Tx FIFO
 
 	// Use polling version of uart0 to do printf/rprintf before starting FreeRTOS

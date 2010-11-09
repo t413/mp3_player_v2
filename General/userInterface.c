@@ -30,6 +30,7 @@ void open_file(char * file_path);
 unsigned char waitForReady(unsigned int timeoutMs);
 void writeEnable();
 void globalProtectionOff();
+void play_spi_mp3(unsigned long, unsigned int, OSHANDLES *);
 
 #define SELECT_FLASH_MEM IOCLR0=(1<<12)
 #define DE_SELECT_FLASH_MEM IOSET0=(1<<12)
@@ -78,7 +79,10 @@ void uartUI(void *pvParameters)
 	PINSEL0 &= ~(3<<24);  // GPIO P0.12 -> Flash Memmory
 	IODIR0 |= (1<<12);    // GPIO P0.12 -> Flash Memmory
 	DE_SELECT_FLASH_MEM;
-
+	
+	vTaskDelay(100);
+	play_spi_mp3(0,42*1024,osHandles);
+	
 	for (;;)
 	{
 		rprintf("tim: "); //print prompt
@@ -296,49 +300,7 @@ void uartUI(void *pvParameters)
 		else if (MATCH("flash-play", command)) {
 			unsigned long address = atoi(strtok(NULL, "")); //first space seperated argument
 			address &= ~(0xFF);  //be sure address has even 256-byte page boundary
-			
-			unsigned char buff[256];
-			unsigned int chunks_to_read = 42*4;
-			while (chunks_to_read--){
-				unsigned int bytesRead = 0;
-				if (xSemaphoreTake( osHandles->lock.SPI, 100)){
-					if (waitForReady(500)){ //wait for the memory to be ready
-						SELECT_FLASH_MEM; //select flash (active low)
-						rxTxByteSSPSPI(0x0B);
-						rxTxByteSSPSPI( (address >> 16) & 0xFF);
-						rxTxByteSSPSPI( (address >>  8) & 0xFF);
-						rxTxByteSSPSPI( (address >>  0) & 0xFF);
-						rxTxByteSSPSPI(0x00);
-						while (bytesRead < sizeof(buff)){
-							buff[bytesRead++] = rxTxByteSSPSPI(0x00);
-							buff[bytesRead++] = rxTxByteSSPSPI(0x00);
-							buff[bytesRead++] = rxTxByteSSPSPI(0x00);
-							buff[bytesRead++] = rxTxByteSSPSPI(0x00);
-							//if ((buff[bytesRead-4] == 0xFF)&&(buff[bytesRead-3] == 0xFF)&&(buff[bytesRead-2] == 0xFF)&&(buff[bytesRead-1] == 0xFF)) break;
-						}
-						DE_SELECT_FLASH_MEM; //deselect flash (active low)
-						address += bytesRead;
-					} else rprintf("timeout error\n");
-					xSemaphoreGive( osHandles->lock.SPI );
-				}
-				//rprintf("at[%i], read %i bytes\n",chunks_to_read,bytesRead);
-				int bytes_played = 0;
-				while( bytes_played < bytesRead) {
-					if (MP3_DATAREQ_IS_HIGH) {
-						if (xSemaphoreTake( osHandles->lock.SPI, 100)){
-							IOSET1 = (1<<29);  //MP3-decoder CS => active high
-							rxTxByteSSPSPI(buff[bytes_played++]);
-							IOCLR1 = (1<<29);  //MP3-decoder CS
-							xSemaphoreGive( osHandles->lock.SPI );
-						}
-					}
-				}
-				if(sizeof(buff) > bytesRead){ // Last Chunk in file
-					rprintf("hit > break\n");
-					break; // Break outer loop, song ended
-				}
-				
-			}
+			play_spi_mp3(address,42*1024,osHandles);
 		}
 
 		else if (MATCH("flash-write", command)) {
@@ -610,3 +572,48 @@ unsigned char waitForReady(unsigned int timeoutMs){
 	DE_SELECT_FLASH_MEM; //select flash (active low)
 	return 1; //success
 }
+
+void play_spi_mp3(unsigned long address, unsigned int length, OSHANDLES * osHandles){	
+	unsigned char buff[128];
+	unsigned int chunks_to_read = length/sizeof(buff);
+	while (chunks_to_read--){
+		unsigned int bytesRead = 0;
+		if (! xSemaphoreTake( osHandles->lock.SPI, 100)) return;
+		if (! waitForReady(500)) return;
+		SELECT_FLASH_MEM; //select flash (active low)
+		rxTxByteSSPSPI(0x0B);
+		rxTxByteSSPSPI( (address >> 16) & 0xFF);
+		rxTxByteSSPSPI( (address >>  8) & 0xFF);
+		rxTxByteSSPSPI( (address >>  0) & 0xFF);
+		rxTxByteSSPSPI(0x00);
+		while (bytesRead < sizeof(buff)){
+			buff[bytesRead++] = rxTxByteSSPSPI(0x00);
+			buff[bytesRead++] = rxTxByteSSPSPI(0x00);
+			buff[bytesRead++] = rxTxByteSSPSPI(0x00);
+			buff[bytesRead++] = rxTxByteSSPSPI(0x00);
+			//if ((buff[bytesRead-4] == 0xFF)&&(buff[bytesRead-3] == 0xFF)&&(buff[bytesRead-2] == 0xFF)&&(buff[bytesRead-1] == 0xFF)) break;
+		}
+		DE_SELECT_FLASH_MEM; //deselect flash (active low)
+		address += bytesRead;
+		xSemaphoreGive( osHandles->lock.SPI );
+		//rprintf("at[%i], read %i bytes\n",chunks_to_read,bytesRead);
+		int bytes_played = 0;
+		while( bytes_played < bytesRead) {
+			if (MP3_DATAREQ_IS_HIGH) {
+				if (xSemaphoreTake( osHandles->lock.SPI, 100)){
+					IOSET1 = (1<<29);  //MP3-decoder CS => active high
+					rxTxByteSSPSPI(buff[bytes_played++]);
+					IOCLR1 = (1<<29);  //MP3-decoder CS
+					xSemaphoreGive( osHandles->lock.SPI );
+				}
+			}
+		}
+		if(sizeof(buff) > bytesRead){ // Last Chunk in file
+			rprintf("hit > break\n");
+			break; // Break outer loop, song ended
+		}
+		
+	}
+}
+
+
