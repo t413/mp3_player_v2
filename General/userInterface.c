@@ -98,13 +98,6 @@ void uartUI(void *pvParameters)
 		}
 
 		/*---------miscellaneous opperations--------*/
-		else if(MATCH("effect", command)) {
-			char * effect_str = strtok(NULL, "");
-			unsigned char effect_int = atoi(effect_str);
-			rprintf("sending effect 0x%02X\n",effect_int);
-			if(xQueueSend(osHandles->queue.effect, &effect_int, 100))
-				rprintf(".. sent!\n");
-		}
 		else if(MATCH("list", command)) {
 			display_track_list(artist_list);
 		}
@@ -123,12 +116,6 @@ void uartUI(void *pvParameters)
 				rprintf(".. sent!\n");
 		}
 		else if(MATCH("stop", command)) {
-			/*unsigned int num_queued = uxQueueMessagesWaiting(osHandles->queue.play_this_MP3);
-			rprintf(" %i queued, removing each.\n",num_queued);
-			while (num_queued--) {
-				char file_name[128];
-				xQueueReceive(osHandles->queue.play_this_MP3, &file_name[0],0);
-			}*/
 			unsigned char cntl = STOP;
 			xQueueSend(osHandles->queue.mp3_control, &cntl, 100);
 		}

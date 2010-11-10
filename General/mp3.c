@@ -178,7 +178,7 @@ FRESULT scan_files (char* path)
 					if (FR_OK == f_open(&file, path, (FA_READ | FA_OPEN_EXISTING)))
 						
 					/* ---- find/create artist node ---- */
-						read_ID3_info(ARTIST_ID3,tag,sizeof(tag),&file);  //read artist-name
+					read_ID3_info(ARTIST_ID3,tag,sizeof(tag),&file);  //read artist-name
 					//rprintf("(by %s) ",tag);
 					Artist * this_artist = findArtist(tag); //search for this artist in the database.
 					if (this_artist == NULL) {  //didn't find artist (hasn't been found before)

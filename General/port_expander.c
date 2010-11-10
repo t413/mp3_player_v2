@@ -35,8 +35,6 @@
 #define max(a,b) ((a>b)?(a):(b))
 
 /* ---- private functions ---- */
-unsigned char readButtons(OSHANDLES *osHandles);
-void writeLEDs(unsigned char effect, OSHANDLES *osHandles);
 
 
 /* ---- public functions ---- */

@@ -8,7 +8,10 @@
 #ifndef MP3_H_
 #define MP3_H_
 
-
+/* -------------------- */
+/* ---- data-types ---- */
+/* -------------------- */
+// this is used control the mp3_task while playing.
 typedef enum {
 	RESUME = 0,
 	STOP,
@@ -22,7 +25,7 @@ typedef enum {
 	SEEK_R_2X
 } MP3_CONTROL;
 
-
+// a global structure to store mp3_task status
 struct {
 	unsigned int has_song : 1;  //if there's a song being played, may be paused.
 	unsigned int playing : 1;   //if there's a song activly being played
@@ -32,11 +35,7 @@ struct {
 	unsigned int read_speed;    //how fast we're reading the SD data
 } player_status;
 
-void mp3_task(void *pvParameters);
-
-
-
-
+// holds a single track and its pathname
 typedef struct Track {
 	unsigned int id;
 	char name[20];
@@ -44,6 +43,7 @@ typedef struct Track {
 	struct Track * next;
 }Track;
 
+// holds an artist
 typedef struct Artist {
 	unsigned int id;
 	char name[20];
@@ -51,15 +51,19 @@ typedef struct Artist {
 	struct Artist * next;
 }Artist;
 
-Artist * artist_list;
-unsigned int num_of_artists;
+Artist * artist_list;  //global variable where each artist, then->track is stored
+unsigned int num_of_artists; //global variable to say how many artist there are.
 
+/* -------------------------- */
+/* ---- public functions ---- */
+/* -------------------------- */
+void mp3_task(void *pvParameters);
 void scan_root(void); //fills in artist_list and num_of_artists
 Artist * get_artist_number(unsigned int a_num, Artist * artist_list);
 Track * get_track_number(unsigned int tra_num, Track * track_list);
-
 void display_track_list(Artist * llist);
 void clear_track_list(void);
 Track * bubblesort(Track *);
+
 
 #endif /* MP3_H_ */
