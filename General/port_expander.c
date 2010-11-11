@@ -49,19 +49,14 @@ void port_expander_task(void *pvParameters) {
 		xSemaphoreGive( osHandles->lock.I2C );
 	}
 	
-	//unsigned int period = 100;
-	unsigned int artist_i = 0, track_i = 0;
-	unsigned char eButt = 0, sent_seek = 0, leds_are_on = 1;
+	unsigned int artist_i = 0;
+	unsigned char sent_seek = 0, leds_are_on = 1;
 	unsigned int i = 0;
 	unsigned long button_down_time = 0;
 	unsigned char last_buttons = 0, out_volume = 20;
 	for(;;i++)
 	{
 		unsigned char innertask_comm;
-		if(xQueueReceive(osHandles->queue.effect, &innertask_comm, 2)){
-			eButt = innertask_comm;
-		}
-		
 		if (xSemaphoreTake( osHandles->lock.I2C, PE_READWRITE_TIMEOUT)) {  //take i2c lock.
 			unsigned char readButtons = i2c_receive_byte(PORT_EXPANDER_ADDRESS,0x01);
 			xSemaphoreGive( osHandles->lock.I2C );
@@ -158,13 +153,13 @@ void port_expander_task(void *pvParameters) {
 				}
 			}
 			
-			//write to the LEDS
+			//make a cool pattern when playing a song.
 			unsigned char effect = readButtons;
 			if (leds_are_on && (player_status.playing) && (last_buttons == 0) && (readButtons == 0)){
 				if ((i/8)%2) effect = 1<<((i)%8);
 				else effect = 1<<(6-(i)%8+1);
 			}
-			
+			//write to the LEDS
 			if(xSemaphoreTake( osHandles->lock.I2C, PE_READWRITE_TIMEOUT)){  //take i2c lock.
 				i2c_send_byte(PORT_EXPANDER_ADDRESS,0x02,effect);
 				xSemaphoreGive( osHandles->lock.I2C );
@@ -172,35 +167,6 @@ void port_expander_task(void *pvParameters) {
 		
 			last_buttons = readButtons;
 		}
-		/*
-		{
-			// create effects based on last button imput that wasn't 0
-			if (readButtons != 0) eButt = readButtons;
-			unsigned char effect;
-			if ((!eButt) || (eButt & 1)){   // button: (-------#)
-				effect = 0; period = 100;
-			}
-			if (eButt & (7<<1)){   // buttons: (----###-)
-				period = (eButt&(1<<1))?150:(eButt&(1<<2))?70:20;
-				if ((i/8)%2) effect = 1<<((i)%8);
-				else effect = 1<<(6-(i)%8+1);
-			}
-			else if (eButt & (7<<4)){   // buttons: (-###----)
-				period = (eButt&(1<<4))?150:(eButt&(1<<5))?70:20;
-				if ((i/8)%2) effect = (1<<((i)%8+1))-1;
-				else effect = (1<<(5-(i)%8+2))-1;
-			}
-			else if (eButt & (1<<7)){   // button: (#-------)
-				effect = 24; period = 100;
-			}
-			else effect = 0;
-			
-			if (effect || (eButt & 1)) i2c_send_byte(0x40,0x02,effect);
-			
-			xSemaphoreGive( osHandles->lock.I2C );
-		}
-		 */
-		//vTaskDelay(period);
 		vTaskDelay(100);
 
 	}

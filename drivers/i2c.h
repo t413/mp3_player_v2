@@ -23,8 +23,6 @@
 #define __i2c_h
 
 
-#define I2C_INTERRUPTS
-
 /*
  * i2c_init - initialize/set up the i2c bus
  *  Input: 
@@ -48,12 +46,7 @@ void i2c_isr() __attribute__ ((interrupt));
  *  Output: 
  *   -1 == success, your data has been sent or read to the array.
  */
-#ifdef I2C_INTERRUPTS
-	void i2c_stateMachine();
-#endif
-#ifndef I2C_INTERRUPTS
-	char i2c_stateMachine(unsigned char slaveAddr, unsigned char slaveReg, unsigned char * data, unsigned int legnth, unsigned int * i);
-#endif
+void i2c_stateMachine();
 
 /* 
  * i2c_send  -  send data array to an i2c device.
