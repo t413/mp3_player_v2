@@ -36,7 +36,7 @@ void i2c_init(unsigned int freq){
 	/*------enable i2c interrupts------*/
 	VICIntEnable |= (1<<9);			 //enable hardware i2c interrupt
 	VICVectCntl5  = (1<<5) | 9;		     //enable vector 2 for i2c0 (see talbe 57)
-	VICVectAddr5  = (volatile unsigned long *)(&i2c_isr);  //write vector address.
+	VICVectAddr5  = (long)i2c_isr;  //write vector address.
 }
 
 void i2c_isr(){
@@ -111,7 +111,7 @@ void i2c_stateMachine()
 	return;
 }
 
-void i2c_send(unsigned char slaveAddr, unsigned char slaveReg, unsigned char * data, unsigned int legnth) {
+void i2c_send(unsigned char slaveAddr, unsigned char slaveReg, volatile unsigned char * data, unsigned int legnth) {
 	I2C_OP_COMPLETED = 0;
 	I2C_SLAVE_ADDRESS = (slaveAddr & ~(1)); //make sure the slaveAddr is _even_ (like 0x40)
 	I2C_SLAVE_REGISTER = slaveReg;
@@ -122,7 +122,7 @@ void i2c_send(unsigned char slaveAddr, unsigned char slaveReg, unsigned char * d
 while (I2C_OP_COMPLETED != 1);
 }
 
-void i2c_revieve(unsigned char slaveAddr, unsigned char slaveReg, unsigned char * data, unsigned int legnth) {
+void i2c_revieve(unsigned char slaveAddr, unsigned char slaveReg, volatile unsigned char * data, unsigned int legnth) {
 	I2C_OP_COMPLETED = 0;
 	I2C_SLAVE_ADDRESS = (slaveAddr | 1); //make sure the slaveAddr is _odd_ (like 0x41)
 	I2C_SLAVE_REGISTER = slaveReg;

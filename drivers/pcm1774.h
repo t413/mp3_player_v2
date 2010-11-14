@@ -14,8 +14,8 @@ extern "C" {
 #define PCM_1774_ADDRESS_BIT	(0)
 
 //! PCM1774 Address based on the PCM_1667_ADR_BIT
-#define PCM_1774_ADDRESS	((0b1000110 << 1) | PCM_1774_ADDRESS_BIT)
-
+//#define PCM_1774_ADDRESS	((0b1000110 << 1) | PCM_1774_ADDRESS_BIT)
+#define PCM_1774_ADDRESS 0x8C
 
 //! Call this before anything using the PCM1774 DAC
 char initialize_pcm1774(void);

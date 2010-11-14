@@ -56,7 +56,7 @@ void i2c_stateMachine();
  *   -and array to read from/write to.
  *   -the legnth of that array
  */
-void i2c_send(unsigned char slaveAddr, unsigned char slaveReg, unsigned char * data, unsigned int legnth);
+void i2c_send(unsigned char slaveAddr, unsigned char slaveReg, volatile unsigned char * data, unsigned int legnth);
 
 /* 
  * i2c_send_byte  -  start talking to an i2c device at an address.
@@ -75,7 +75,7 @@ void i2c_send_byte(unsigned char slaveAddr, unsigned char slaveReg, unsigned cha
  *   -and array to read from/write to.
  *   -how many bytes to read (likely also the legnth of that array)
  */
-void i2c_revieve(unsigned char slaveAddr, unsigned char slaveReg, unsigned char * data, unsigned int legnth);
+void i2c_revieve(unsigned char slaveAddr, unsigned char slaveReg, volatile unsigned char * data, unsigned int legnth);
 
 /* 
  * i2c_receive_byte  -  receive a single byte.

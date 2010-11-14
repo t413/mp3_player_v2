@@ -56,7 +56,6 @@ void port_expander_task(void *pvParameters) {
 	unsigned char last_buttons = 0, out_volume = 20;
 	for(;;i++)
 	{
-		unsigned char innertask_comm;
 		if (xSemaphoreTake( osHandles->lock.I2C, PE_READWRITE_TIMEOUT)) {  //take i2c lock.
 			unsigned char readButtons = i2c_receive_byte(PORT_EXPANDER_ADDRESS,0x01);
 			xSemaphoreGive( osHandles->lock.I2C );

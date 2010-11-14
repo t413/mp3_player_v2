@@ -5,6 +5,9 @@
 	<storageModule moduleId="org.eclipse.cdt.core.settings">
 		<cconfiguration id="org.eclipse.cdt.cross.arm.gnu.windows.elf.release.924986334">
 			<storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="org.eclipse.cdt.cross.arm.gnu.windows.elf.release.924986334" moduleId="org.eclipse.cdt.core.settings" name="Release">
+				<macros>
+					<stringMacro name="BUILD_ARM_PATH" type="VALUE_PATH_DIR" value="/usr/local/arm/bin"/>
+				</macros>
 				<externalSettings/>
 				<extensions>
 					<extension id="org.eclipse.cdt.core.GNU_ELF" point="org.eclipse.cdt.core.BinaryParser"/>
@@ -23,13 +26,13 @@
 							<option id="org.eclipse.cdt.cross.arm.gnu.windows.option.debugging.level.1971142537" name="Debug level" superClass="org.eclipse.cdt.cross.arm.gnu.windows.option.debugging.level" value="org.eclipse.cdt.cross.arm.gnu.base.option.debugging.level.none" valueType="enumerated"/>
 							<option id="org.eclipse.cdt.cross.arm.gnu.windows.option.target.thumb.2138115819" name="Thumb (-mthumb)" superClass="org.eclipse.cdt.cross.arm.gnu.windows.option.target.thumb" value="false" valueType="boolean"/>
 							<option id="org.eclipse.cdt.cross.arm.gnu.windows.option.target.processor.2144137446" name="Processor" superClass="org.eclipse.cdt.cross.arm.gnu.windows.option.target.processor" value="org.eclipse.cdt.cross.arm.gnu.base.option.mcpu.arm7tdmi-s" valueType="enumerated"/>
-							<option id="org.eclipse.cdt.cross.arm.gnu.windows.option.addtools.createlisting.132572211" superClass="org.eclipse.cdt.cross.arm.gnu.windows.option.addtools.createlisting" value="false" valueType="boolean"/>
+							<option id="org.eclipse.cdt.cross.arm.gnu.windows.option.addtools.createlisting.132572211" name="Create Extended Listing" superClass="org.eclipse.cdt.cross.arm.gnu.windows.option.addtools.createlisting" value="false" valueType="boolean"/>
 							<targetPlatform id="org.eclipse.cdt.cross.arm.gnu.windows.elf.platform.release.1690752164" isAbstract="false" name="Linux Platform" superClass="org.eclipse.cdt.cross.arm.gnu.windows.elf.platform.release"/>
 							<builder buildPath="${workspace_loc:/lpc2148_FreeRTOS_v6/Release}" id="org.eclipse.cdt.cross.arm.gnu.windows.elf.builder.release.1487393220" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="ARM Windows GNU Make builder" superClass="org.eclipse.cdt.cross.arm.gnu.windows.elf.builder.release"/>
-							<tool id="org.eclipse.cdt.cross.arm.gnu.windows.elf.assembler.release.119948929" name="ARM Windows GCC Assembler" superClass="org.eclipse.cdt.cross.arm.gnu.windows.elf.assembler.release">
+							<tool commandLinePattern="${BUILD_ARM_PATH}/${COMMAND} ${FLAGS} ${OUTPUT_FLAG}${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="org.eclipse.cdt.cross.arm.gnu.windows.elf.assembler.release.119948929" name="ARM Windows GCC Assembler" superClass="org.eclipse.cdt.cross.arm.gnu.windows.elf.assembler.release">
 								<inputType id="org.eclipse.cdt.cross.arm.gnu.windows.assembler.base.input.1010945561" superClass="org.eclipse.cdt.cross.arm.gnu.windows.assembler.base.input"/>
 							</tool>
-							<tool id="org.eclipse.cdt.cross.arm.gnu.windows.elf.c.compiler.release.834175577" name="ARM Windows GCC C Compiler" superClass="org.eclipse.cdt.cross.arm.gnu.windows.elf.c.compiler.release">
+							<tool commandLinePattern="${BUILD_ARM_PATH}/${COMMAND} ${FLAGS} ${OUTPUT_FLAG}${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="org.eclipse.cdt.cross.arm.gnu.windows.elf.c.compiler.release.834175577" name="ARM Windows GCC C Compiler" superClass="org.eclipse.cdt.cross.arm.gnu.windows.elf.c.compiler.release">
 								<option id="org.eclipse.cdt.cross.arm.gnu.c.compiler.option.optimization.level.227670222" name="Optimization level" superClass="org.eclipse.cdt.cross.arm.gnu.c.compiler.option.optimization.level" value="org.eclipse.cdt.cross.arm.gnu.base.option.optimization.level.size" valueType="enumerated"/>
 								<option id="org.eclipse.cdt.cross.arm.gnu.c.compiler.option.optimization.packstruct.788199796" name="Pack structures (-fpack-struct)" superClass="org.eclipse.cdt.cross.arm.gnu.c.compiler.option.optimization.packstruct" value="false" valueType="boolean"/>
 								<option id="org.eclipse.cdt.cross.arm.gnu.c.compiler.option.misc.std.1206345557" name="Language Standard" superClass="org.eclipse.cdt.cross.arm.gnu.c.compiler.option.misc.std" value="org.eclipse.cdt.cross.arm.gnu.c.compiler.option.misc.std.gnu99" valueType="enumerated"/>
@@ -38,9 +41,9 @@
 							<tool id="org.eclipse.cdt.cross.arm.gnu.windows.elf.cpp.compiler.release.373601150" name="ARM Windows GCC C++ Compiler" superClass="org.eclipse.cdt.cross.arm.gnu.windows.elf.cpp.compiler.release">
 								<option id="org.eclipse.cdt.cross.arm.gnu.cpp.compiler.option.optimization.level.456016341" name="Optimization level" superClass="org.eclipse.cdt.cross.arm.gnu.cpp.compiler.option.optimization.level" value="org.eclipse.cdt.cross.arm.gnu.base.option.optimization.level.size" valueType="enumerated"/>
 							</tool>
-							<tool id="org.eclipse.cdt.cross.arm.gnu.windows.elf.c.linker.release.41020089" name="ARM Windows GCC C Linker" superClass="org.eclipse.cdt.cross.arm.gnu.windows.elf.c.linker.release">
+							<tool commandLinePattern="${BUILD_ARM_PATH}/${COMMAND} ${FLAGS} ${OUTPUT_FLAG}${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="org.eclipse.cdt.cross.arm.gnu.windows.elf.c.linker.release.41020089" name="ARM Windows GCC C Linker" superClass="org.eclipse.cdt.cross.arm.gnu.windows.elf.c.linker.release">
 								<option id="org.eclipse.cdt.cross.arm.gnu.c.link.option.nostart.613030717" name="Do not use standard start files (-nostartfiles)" superClass="org.eclipse.cdt.cross.arm.gnu.c.link.option.nostart" value="true" valueType="boolean"/>
-								<option id="org.eclipse.cdt.cross.arm.gnu.c.link.option.scriptfile.248170469" name="Script file (-T)" superClass="org.eclipse.cdt.cross.arm.gnu.c.link.option.scriptfile" value="..\lpc2148-rom.ld" valueType="string"/>
+								<option id="org.eclipse.cdt.cross.arm.gnu.c.link.option.scriptfile.248170469" name="Script file (-T)" superClass="org.eclipse.cdt.cross.arm.gnu.c.link.option.scriptfile" value="../lpc2148-rom.ld" valueType="string"/>
 								<inputType id="org.eclipse.cdt.cross.arm.gnu.c.linker.input.97168941" superClass="org.eclipse.cdt.cross.arm.gnu.c.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
@@ -48,9 +51,9 @@
 							</tool>
 							<tool id="org.eclipse.cdt.cross.arm.gnu.windows.elf.cpp.linker.release.1293780662" name="ARM Windows GCC C++ Linker" superClass="org.eclipse.cdt.cross.arm.gnu.windows.elf.cpp.linker.release"/>
 							<tool id="org.eclipse.cdt.cross.arm.gnu.windows.archiver.base.1546663866" name="ARM Windows GCC Archiver" superClass="org.eclipse.cdt.cross.arm.gnu.windows.archiver.base"/>
-							<tool id="org.eclipse.cdt.cross.arm.gnu.windows.elf.createflash.release.514969631" name="ARM Windows GNU Create Flash Image" superClass="org.eclipse.cdt.cross.arm.gnu.windows.elf.createflash.release"/>
+							<tool commandLinePattern="${BUILD_ARM_PATH}/${COMMAND} ${FLAGS} ${OUTPUT_FLAG}${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" id="org.eclipse.cdt.cross.arm.gnu.windows.elf.createflash.release.514969631" name="ARM Windows GNU Create Flash Image" superClass="org.eclipse.cdt.cross.arm.gnu.windows.elf.createflash.release"/>
 							<tool id="org.eclipse.cdt.cross.arm.gnu.windows.elf.createlisting.release.1651092993" name="ARM Windows GNU Create Listing" superClass="org.eclipse.cdt.cross.arm.gnu.windows.elf.createlisting.release"/>
-							<tool id="org.eclipse.cdt.cross.arm.gnu.windows.elf.printsize.release.485491737" name="ARM Windows GNU Print Size" superClass="org.eclipse.cdt.cross.arm.gnu.windows.elf.printsize.release"/>
+							<tool commandLinePattern="${BUILD_ARM_PATH}/${COMMAND} ${INPUTS} ${FLAGS}" id="org.eclipse.cdt.cross.arm.gnu.windows.elf.printsize.release.485491737" name="ARM Windows GNU Print Size" superClass="org.eclipse.cdt.cross.arm.gnu.windows.elf.printsize.release"/>
 						</toolChain>
 					</folderInfo>
 				</configuration>
@@ -1146,6 +1149,7 @@
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
 			<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
+			<storageModule moduleId="org.eclipse.cdt.core.language.mapping"/>
 		</cconfiguration>
 	</storageModule>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
