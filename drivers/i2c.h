@@ -31,23 +31,6 @@
 void i2c_init(unsigned int freq);
 
 
-
-void i2c_isr() __attribute__ ((interrupt));
-
-
-/* 
- * i2c_stateMachine  -  handle i2c states.
- *  Input: 
- *   -the address of the slave to talk to
- *   -the register of the slave to read/write to
- *   -and array to read from/write to.
- *   -the legnth of that array
- *   -the address of an initally zeroed unsigned integer counter that persists across calls
- *  Output: 
- *   -1 == success, your data has been sent or read to the array.
- */
-void i2c_stateMachine();
-
 /* 
  * i2c_send  -  send data array to an i2c device.
  *  Input: 
@@ -56,7 +39,7 @@ void i2c_stateMachine();
  *   -and array to read from/write to.
  *   -the legnth of that array
  */
-void i2c_send(unsigned char slaveAddr, unsigned char slaveReg, volatile unsigned char * data, unsigned int legnth);
+unsigned char i2c_send(unsigned char slaveAddr, unsigned char slaveReg, volatile unsigned char * data, unsigned int legnth);
 
 /* 
  * i2c_send_byte  -  start talking to an i2c device at an address.
@@ -75,7 +58,7 @@ void i2c_send_byte(unsigned char slaveAddr, unsigned char slaveReg, unsigned cha
  *   -and array to read from/write to.
  *   -how many bytes to read (likely also the legnth of that array)
  */
-void i2c_revieve(unsigned char slaveAddr, unsigned char slaveReg, volatile unsigned char * data, unsigned int legnth);
+unsigned char i2c_revieve(unsigned char slaveAddr, unsigned char slaveReg, volatile unsigned char * data, unsigned int legnth);
 
 /* 
  * i2c_receive_byte  -  receive a single byte.
