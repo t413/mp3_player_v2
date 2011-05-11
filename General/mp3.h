@@ -37,7 +37,7 @@ struct {
 
 // holds a single track and its pathname
 typedef struct Track {
-	unsigned int id;
+	unsigned int id, year;
 	char name[20];
 	char filename[40];
 	struct Track * next;

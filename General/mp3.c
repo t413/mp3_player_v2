@@ -137,14 +137,27 @@ void scan_root(void){
 	rprintf("scanning 0:/MUSIC\n");
 	scan_files(long_pathname);
 
+	rprintf("found artists: ");
+
 	num_of_artists = 0;
+	unsigned int num_of_tracks = 0;
 	Artist * list_cpy = artist_list;
 	while(list_cpy != NULL) {
 		num_of_artists++;
+
+		list_cpy->tracks = bubblesort(list_cpy->tracks);
+		unsigned int arts_trks = 0;
+		for (Track *tmp=list_cpy->tracks; tmp->next != NULL; tmp=tmp->next) { arts_trks++; } //counts how many tracks this artist has
+		rprintf("%s [%i], ",list_cpy->name, arts_trks );
+		num_of_tracks += arts_trks; //add artist total to the overall total.
+
 		list_cpy = list_cpy->next;
 	}
+
+	rprintf("\nnumber of: artists=%i, tracks=%i \n",num_of_artists,num_of_tracks);
 }	
 
+//TODO: rewrite/rework to not use recursion. It's way to resource heavy.
 FRESULT scan_files (char* path)
 {
     FRESULT res;
@@ -183,20 +196,27 @@ FRESULT scan_files (char* path)
 					Artist * this_artist = findArtist(tag); //search for this artist in the database.
 					if (this_artist == NULL) {  //didn't find artist (hasn't been found before)
 						this_artist = (Artist *)malloc(sizeof(Artist));
+						if (this_artist == NULL) { rprintf("malloc null 1"); return res;} //watch out for a linked list that's too big, malloc returns null
 						strcpy(this_artist->name, tag);
 						this_artist->tracks = NULL;
 						this_artist->next = artist_list;
 						artist_list = this_artist;
 					}
 					/* ---- create track node ---- */
-					read_ID3_info(TITLE_ID3,tag,sizeof(tag),&file);  //read track-name
 					Track * this_track = (Track *)malloc(sizeof(Track));
+					if (this_track == NULL) { rprintf("malloc null 2"); return res;} //watch out for a linked list that's too big, malloc returns null
+					read_ID3_info(TITLE_ID3,tag,sizeof(tag),&file);  //read track-name
 					strcpy(this_track->name, tag);
-					strncpy(this_track->filename, path,30); //get the file path/name..
+					strncpy(this_track->filename, path, sizeof(this_track->filename) ); //get the file path/name..
+					read_ID3_info(TRACK_NUM_ID3,tag,sizeof(tag),&file);  //read track-name
+					if (tag[1]=='/') tag[1]=0; else if (tag[2]=='/') tag[2]=0; //track num is in form "1/14", so we put a null at the / (assuming it's in char 1 or 2)
+					this_track->id = atoi(tag);
+					if (read_ID3_info(YEAR_ID3,tag,sizeof(tag),&file)) { //read the track's year
+						this_track->year = atoi(tag);
+					} else { this_track->year = 0; }
 					this_track->next = this_artist->tracks;
 					this_artist->tracks = this_track;
 					//rprintf("-> %s\n",tag);
-					
 					
 					path[i] = 0;  //restore path to what it was before.
 				}
@@ -264,54 +284,6 @@ void clear_track_list(void) {
 	}
 }
 
-#if 1
-Track * bubblesort(Track *head)
-{
-	int i, j, count = 0;
-	Track *p0, *p1, *p2, *p3;
-	
-    //determine total number of nodes
-    for (Track *tmp=head; tmp->next != NULL; tmp=tmp->next) { count++; }
-
-	for(i = 1; i < count; i++)
-	{
-		p0 = NULL;
-		p1 = head;
-		p2 = head->next;
-		p3 = p2->next;
-		
-		for(j = 1; j <= (count - i); j++)
-		{
-			if (strcmp(p1->name, p2->name)==0)  //if(p1->value > p2->value)
-			{
-				// Adjust the pointers...
-				p1->next = p3;
-				p2->next = p1;
-				if(p0)p0->next=p2;
-				
-				
-				// Set the head pointer if it was changed...
-				if(head == p1)head=p2;
-				
-				// Progress the pointers
-				p0 = p2;
-				p2 = p1->next;
-				p3 = p3->next;
-			}
-			else
-			{
-				// Nothing to swap, just progress the pointers...
-				p0 = p1;
-				p1 = p2;
-				p2 = p3;
-				p3 = p3->next;
-			}
-		}
-	}
-	return head;
-}
-
-#else
 Track * bubblesort(Track * list)
 {
     Track *tmp=list, *lst, *prev = NULL, *potentialprev = list;
@@ -324,6 +296,8 @@ Track * bubblesort(Track * list)
     {
         for (j_inner=0,lst=list; lst && lst->next && (j_inner<=n-1-i_outer); j_inner++)
         {
+        	//for (; tmp->next != NULL; tmp=tmp->next) { uart0PutChar(lst->filename[0],100);uart0PutChar(lst->filename[1],100);uart0PutChar(' ',100); } rprintf("\n");
+
             if (!j_inner)
             {
                 //we are at beginning, so treat start 
@@ -332,8 +306,8 @@ Track * bubblesort(Track * list)
             }
 			
             //compare the two neighbors
-            if ( strcmp ( lst->name, lst->next->name ) == 1 ) 
-            {  
+            if ( ((lst->year<<8) + lst->id) > ((lst->next->year<<8) + lst->next->id) )
+            {
                 //swap the nodes
                 tmp = ((lst->next)? lst->next->next:0);
 				
@@ -364,5 +338,4 @@ Track * bubblesort(Track * list)
     }
     return list;
 }
-#endif
 

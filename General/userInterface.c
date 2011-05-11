@@ -92,7 +92,8 @@ void uartUI(void *pvParameters)
 	}*/
 
 	vTaskDelay(100);
-	play_spi_mp3(0,42*1024,osHandles);
+    //play short mp3 stored at flash location 0.
+	//play_spi_mp3(0,42*1024,osHandles);
 	
 	for (;;)
 	{
@@ -108,7 +109,7 @@ void uartUI(void *pvParameters)
 			rprintf("Echo: %s\n", echoBack);
 		}
 
-		/*---------miscellaneous opperations--------*/
+		/*---------miscellaneous operations--------*/
 		else if(MATCH("list", command)) {
 			display_track_list(artist_list);
 		}
