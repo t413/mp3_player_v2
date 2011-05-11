@@ -51,14 +51,14 @@ unsigned char i2c_send(unsigned char slaveAddr, unsigned char slaveReg, volatile
 void i2c_send_byte(unsigned char slaveAddr, unsigned char slaveReg, unsigned char data);
 
 /* 
- * i2c_revieve  -  receive an array of data.
+ * i2c_receive  -  receive an array of data.
  *  Input: 
  *   -the address of the slave to talk to
  *   -the register of the slave to read/write to
  *   -and array to read from/write to.
  *   -how many bytes to read (likely also the legnth of that array)
  */
-unsigned char i2c_revieve(unsigned char slaveAddr, unsigned char slaveReg, volatile unsigned char * data, unsigned int legnth);
+unsigned char i2c_receive(unsigned char slaveAddr, unsigned char slaveReg, volatile unsigned char * data, unsigned int legnth);
 
 /* 
  * i2c_receive_byte  -  receive a single byte.

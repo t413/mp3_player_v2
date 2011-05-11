@@ -80,6 +80,17 @@ void uartUI(void *pvParameters)
 	IODIR0 |= (1<<12);    // GPIO P0.12 -> Flash Memmory
 	DE_SELECT_FLASH_MEM;
 	
+	/*rprintf("Scanning i2c bus:\n");
+	unsigned char hi[2];
+	int k=0x10;
+	while (k < 0xF1){
+		if (i2c_receive(k,0x00,hi,0))
+			rprintf("\nfound at 0x%x\n",k);
+		else rprintf("\t %x ",k);
+		if (!(k%16)) rprintf("\n");
+		k += 2;
+	}*/
+
 	vTaskDelay(100);
 	play_spi_mp3(0,42*1024,osHandles);
 	

@@ -79,6 +79,7 @@ void i2c_isr()
  */
 unsigned char i2c_stateMachine()
 {
+	int timeout;
 	switch (I2STAT) {
 		case 0x08: //Start transmitted. next send slave address, then ACK will be received.
 			I2DAT = I2C_SLAVE_ADDRESS & ~(1); //send _even_ transmit address no matter what.
@@ -131,13 +132,14 @@ unsigned char i2c_stateMachine()
 			--I2C_DATA_ARRAY_LEGNTH;				//decrement how many more bytes to read
 			I2CONCLR = SIC;
 			I2CONSET = STO | AA;
-			int timeout=1000;
+			timeout = 1000;
 			while ((I2CONSET & STO) && timeout--); //wait for stop bit to clear
 			return 1; //done receiving data.
 			break;
 		default: //stop.
 			I2CONSET = STO;
-			while (I2CONSET & STO); //wait for stop bit to clear
+			timeout = 1000;
+			while ((I2CONSET & STO) && timeout--); //wait for stop bit to clear
 	}
 	I2CONCLR = SIC; //clear SI flag
 	//I2C_OP_COMPLETED = 0;
@@ -160,7 +162,7 @@ unsigned char i2c_send(unsigned char slaveAddr, unsigned char slaveReg, volatile
 	return 0;
 }
 
-unsigned char i2c_revieve(unsigned char slaveAddr, unsigned char slaveReg, volatile unsigned char * data, unsigned int legnth) {
+unsigned char i2c_receive(unsigned char slaveAddr, unsigned char slaveReg, volatile unsigned char * data, unsigned int legnth) {
 	if (xSemaphoreTake( i2c_lock, I2C_LOCK_TIMEOUT)) {  //take i2c lock.
 		I2C_SLAVE_ADDRESS = (slaveAddr | 1); //make sure the slaveAddr is _odd_ (like 0x41)
 		I2C_SLAVE_REGISTER = slaveReg;
@@ -182,6 +184,6 @@ void i2c_send_byte(unsigned char slaveAddr, unsigned char slaveReg, unsigned cha
 
 unsigned char i2c_receive_byte(unsigned char slaveAddr, unsigned char slaveReg) {
 	volatile unsigned char dataArray[1];
-	i2c_revieve(slaveAddr,slaveReg,dataArray,1);
+	i2c_receive(slaveAddr,slaveReg,dataArray,1);
 	return dataArray[0];
 }
